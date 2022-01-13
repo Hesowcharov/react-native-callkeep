@@ -421,6 +421,11 @@ RCT_EXPORT_METHOD(setAudioRoute: (NSString *)uuid
         NSArray *ports = [RNCallKeep getAudioInputs];
         for (AVAudioSessionPortDescription *port in ports) {
             if ([port.portName isEqualToString:inputName]) {
+                // HACK: due to unknown reasons, after switching back to the default output/input of
+                // headset (bt or wired ones if they connected to a device) by invoking setPreferredInput,
+                // audio just stops working.
+                // That's why we need to first reset the preferred input, and only then set it.
+                [myAudioSession setPreferredInput:nil error:&err];
                 BOOL isSetted = [myAudioSession setPreferredInput:(AVAudioSessionPortDescription *)port error:&err];
                 if(!isSetted){
                     [NSException raise:@"setPreferredInput failed" format:@"error: %@", err];
