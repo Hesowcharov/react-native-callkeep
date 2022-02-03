@@ -806,8 +806,14 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     }
 
     private static boolean hasPhoneAccount() {
-        return isConnectionServiceAvailable() && telecomManager != null
-            && telecomManager.getPhoneAccount(handle) != null && telecomManager.getPhoneAccount(handle).isEnabled();
+        try {
+            return isConnectionServiceAvailable() && telecomManager != null
+                    && telecomManager.getPhoneAccount(handle) != null && telecomManager.getPhoneAccount(handle).isEnabled();
+        } catch (SecurityException e) {
+            // Since android 11+ invocation of TelecomManager#getPhoneAccount may throw the exception if
+            // android.permission.READ_PHONE_NUMBERS is not granted
+            return false;
+        }
     }
 
     private void registerReceiver() {
