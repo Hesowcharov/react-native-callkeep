@@ -122,7 +122,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     private boolean isReceiverRegistered = false;
     private VoiceBroadcastReceiver voiceBroadcastReceiver;
     private static WritableMap _settings;
-    private WritableNativeArray delayedEvents;
+    private WritableArray delayedEvents;
     private boolean hasListeners = false;
 
     public static RNCallKeepModule getInstance(ReactApplicationContext reactContext, boolean realContext) {
@@ -149,7 +149,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         Log.d(TAG, "[RNCallKeepModule] constructor");
 
         this.reactContext = reactContext;
-        delayedEvents = new WritableNativeArray();
+        delayedEvents = Arguments.createArray();
         this.registerReceiver();
     }
 
@@ -197,7 +197,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         Log.d(TAG, "[RNCallKeepModule] startObserving, event count: " + count);
         if (count > 0) {
             this.reactContext.getJSModule(RCTDeviceEventEmitter.class).emit("RNCallKeepDidLoadWithEvents", delayedEvents);
-            delayedEvents = new WritableNativeArray();
+            delayedEvents = Arguments.createArray();
         }
     }
 
@@ -527,12 +527,16 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void getInitialEvents(Promise promise) {
-        promise.resolve(delayedEvents);
+        WritableArray delayedEventsCopy = Arguments.createArray();
+        for (Object obj : delayedEvents.toArrayList()) {
+            delayedEventsCopy.pushMap((ReadableMap) obj);
+        }
+        promise.resolve(delayedEventsCopy);
     }
 
     @ReactMethod
     public void clearInitialEvents() {
-        delayedEvents = new WritableNativeArray();
+        delayedEvents = Arguments.createArray();
     }
 
     @ReactMethod
