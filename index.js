@@ -88,7 +88,7 @@ class RNCallKeep {
     options = null
   ) => {
     if (!isIOS) {
-      RNCallKeepModule.displayIncomingCall(uuid, handle, localizedCallerName);
+      RNCallKeepModule.displayIncomingCall(uuid, handle, localizedCallerName, options?.android?.payload ?? null);
       return;
     }
 
