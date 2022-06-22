@@ -49,6 +49,7 @@ static NSString *const RNCallKeepDidLoadWithEvents = @"RNCallKeepDidLoadWithEven
 
 static bool isSetupNatively;
 static CXProvider* sharedProvider;
+static NSMutableDictionary* handleToUuidDict;
 
 // should initialise in AppDelegate.m
 RCT_EXPORT_MODULE()
@@ -69,6 +70,7 @@ RCT_EXPORT_MODULE()
                                                    object:nil];
         // Init provider directly, in case of an app killed and when we've already stored our settings
         [RNCallKeep initCallKitProvider];
+        handleToUuidDict = [[NSMutableDictionary alloc] init];
 
         self.callKeepProvider = sharedProvider;
         [self.callKeepProvider setDelegate:self queue:nil];
@@ -97,6 +99,7 @@ RCT_EXPORT_MODULE()
     }
     sharedProvider = nil;
     _isReachable = NO;
+    handleToUuidDict = nil;
 }
 
 // Override method of RCTEventEmitter
@@ -751,7 +754,6 @@ RCT_EXPORT_METHOD(getAudioRoutes: (RCTPromiseResolveBlock)resolve
     NSLog(@"[RNCallKeep][reportNewIncomingCall] uuidString = %@", uuidString);
 #endif
     int _handleType = [RNCallKeep getHandleType:handleType];
-    NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
     CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
     callUpdate.remoteHandle = [[CXHandle alloc] initWithType:_handleType value:handle];
     callUpdate.supportsHolding = supportsHolding;
@@ -761,13 +763,27 @@ RCT_EXPORT_METHOD(getAudioRoutes: (RCTPromiseResolveBlock)resolve
     callUpdate.hasVideo = hasVideo;
     callUpdate.localizedCallerName = localizedCallerName;
 
+    // NOTE: Do not allow to report several incoming calls with the same handle. Since SIP and VoIP push don't have a common id, there may be concurrency issue between SIP and APNS.
+    // Therefore we use 'handle' as a common ID and re-use already existing call uuid.
+    NSString* existingCallUuidForHandle = [handleToUuidDict valueForKey:handle];
+    NSString* fixedCallUuid;
+    if (existingCallUuidForHandle) {
+        fixedCallUuid = existingCallUuidForHandle;
+        #ifdef DEBUG
+            NSLog(@"[RNCallKeep][reportNewIncomingCall] re-use existing uuid = %@", existingCallUuidForHandle);
+        #endif
+    } else {
+        fixedCallUuid = uuidString;
+        [handleToUuidDict setValue:uuidString forKey:handle];
+    }
+    NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:fixedCallUuid];
     [RNCallKeep initCallKitProvider];
     [sharedProvider reportNewIncomingCallWithUUID:uuid update:callUpdate completion:^(NSError * _Nullable error) {
         RNCallKeep *callKeep = [RNCallKeep allocWithZone: nil];
         [callKeep sendEventWithNameWrapper:RNCallKeepDidDisplayIncomingCall body:@{
             @"error": error && error.localizedDescription ? error.localizedDescription : @"",
             @"errorCode": error ? [callKeep getIncomingCallErrorCode:error] : @"",
-            @"callUUID": uuidString,
+            @"callUUID": fixedCallUuid,
             @"handle": handle,
             @"localizedCallerName": localizedCallerName ? localizedCallerName : @"",
             @"hasVideo": hasVideo ? @"1" : @"0",
@@ -1054,6 +1070,12 @@ RCT_EXPORT_METHOD(reportUpdatedCall:(NSString *)uuidString contactIdentifier:(NS
 #ifdef DEBUG
     NSLog(@"[RNCallKeep][CXProviderDelegate][provider:performEndCallAction]");
 #endif
+    for (NSString* handle in handleToUuidDict.allKeys) {
+        NSString* uuid = [handleToUuidDict valueForKey:handle];
+        if ([uuid isEqualToString: [action.callUUID.UUIDString lowercaseString]]) {
+            [handleToUuidDict removeObjectForKey:handle];
+        }
+    }
     [self sendEventWithNameWrapper:RNCallKeepPerformEndCallAction body:@{ @"callUUID": [action.callUUID.UUIDString lowercaseString] }];
     [action fulfill];
 }
