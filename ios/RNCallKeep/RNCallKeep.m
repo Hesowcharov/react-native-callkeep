@@ -527,7 +527,8 @@ RCT_EXPORT_METHOD(setAudioRoute: (NSString *)uuid
         NSUInteger options = [myAudioSession categoryOptions];
         if(![category isEqualToString:AVAudioSessionCategoryPlayAndRecord] && (options != AVAudioSessionCategoryOptionAllowBluetooth) && (options !=AVAudioSessionCategoryOptionAllowBluetoothA2DP))
         {
-            BOOL isCategorySetted = [myAudioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionAllowBluetooth error:&err];
+            BOOL isCategorySetted = [myAudioSession setCategory:AVAudioSessionCategoryPlayAndRecord
+                                                    withOptions:AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionAllowAirPlay error:&err];
             if (!isCategorySetted)
             {
                 NSLog(@"setCategory failed");
@@ -637,6 +638,12 @@ RCT_EXPORT_METHOD(getAudioRoutes: (RCTPromiseResolveBlock)resolve
     }
     else if ([type isEqualToString:AVAudioSessionPortBuiltInSpeaker]){
         return @"Speaker";
+    }
+    else if ([type isEqualToString:AVAudioSessionPortCarAudio]){
+        return @"Car Audio";
+    }
+    else if ([type isEqualToString:AVAudioSessionPortUSBAudio]){
+        return @"USB Audio";
     }
     else{
         return nil;
@@ -925,7 +932,7 @@ RCT_EXPORT_METHOD(getAudioRoutes: (RCTPromiseResolveBlock)resolve
 
     AVAudioSession* audioSession = [AVAudioSession sharedInstance];
     [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord
-                  withOptions:AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionAllowBluetoothA2DP
+                  withOptions:AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionAllowBluetoothA2DP | AVAudioSessionCategoryOptionAllowAirPlay
                   error:nil];
 
     [audioSession setMode:AVAudioSessionModeDefault error:nil];
