@@ -80,6 +80,7 @@ import org.json.JSONException;
 import static androidx.core.app.ActivityCompat.requestPermissions;
 
 import static io.wazo.callkeep.Constants.EXTRA_CALLER_NAME;
+import static io.wazo.callkeep.Constants.EXTRA_CALL_PAYLOAD;
 import static io.wazo.callkeep.Constants.EXTRA_CALL_UUID;
 import static io.wazo.callkeep.Constants.EXTRA_CALL_NUMBER;
 import static io.wazo.callkeep.Constants.EXTRA_HAS_VIDEO;
@@ -180,7 +181,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     public void reportNewIncomingCall(String uuid, String number, String callerName, boolean hasVideo, String payload) {
         Log.d(TAG, "[RNCallKeepModule] reportNewIncomingCall, uuid: " + uuid + ", number: " + number + ", callerName: " + callerName);
 
-        this.displayIncomingCall(uuid, number, callerName, hasVideo);
+        this.displayIncomingCall(uuid, number, callerName, hasVideo, null);
 
         // Send event to JS
         WritableMap args = Arguments.createMap();
@@ -308,11 +309,11 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void displayIncomingCall(String uuid, String number, String callerName) {
-        this.displayIncomingCall(uuid, number, callerName, false);
+        this.displayIncomingCall(uuid, number, callerName, false, null);
     }
 
     @ReactMethod
-    public void displayIncomingCall(String uuid, String number, String callerName, boolean hasVideo) {
+    public void displayIncomingCall(String uuid, String number, String callerName, boolean hasVideo, ReadableMap payload) {
         if (!isConnectionServiceAvailable() || !hasPhoneAccount()) {
             Log.w(TAG, "[RNCallKeepModule] displayIncomingCall ignored due to no ConnectionService or no phone account");
             return;
@@ -327,6 +328,12 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         extras.putString(EXTRA_CALLER_NAME, callerName);
         extras.putString(EXTRA_CALL_UUID, uuid);
         extras.putString(EXTRA_HAS_VIDEO, String.valueOf(hasVideo));
+        if (payload != null) {
+            try {
+                JSONObject jsonObject = MapUtils.convertMapToJson(payload);
+                extras.putString(EXTRA_CALL_PAYLOAD, jsonObject.toString());
+            } catch (Exception ignore) {}
+        }
 
         telecomManager.addNewIncomingCall(handle, extras);
     }
@@ -1160,6 +1167,13 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
                     args.putString("callUUID", attributeMap.get(EXTRA_CALL_UUID));
                     args.putString("name", attributeMap.get(EXTRA_CALLER_NAME));
                     args.putString("hasVideo", attributeMap.get(EXTRA_HAS_VIDEO));
+                    String jsonStringifiedPayload = attributeMap.get(EXTRA_CALL_PAYLOAD);
+                    if (jsonStringifiedPayload != null && jsonStringifiedPayload.length() > 0) {
+                        try {
+                            JSONObject jsonPayload = new JSONObject(jsonStringifiedPayload);
+                            args.putMap("payload", MapUtils.convertJsonToMap(jsonPayload));
+                        } catch (Exception ignore) {}
+                    }
                     sendEventToJS("RNCallKeepShowIncomingCallUi", args);
                     break;
                 case ACTION_WAKE_APP:
