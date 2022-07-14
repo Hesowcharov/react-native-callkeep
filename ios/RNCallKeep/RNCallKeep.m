@@ -136,6 +136,12 @@ RCT_EXPORT_MODULE()
 
 - (void)stopObserving
 {
+    if (isSetupNatively) {
+        // NO-OP: due to the singleton instance and native setup, startObserving will not be called again after invalidation
+        return;
+    }
+
+    NSLog(@"[RNCallKeep][stopObserving]");
     _hasListeners = FALSE;
 }
 
