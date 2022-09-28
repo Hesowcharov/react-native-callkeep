@@ -359,14 +359,7 @@ RCT_EXPORT_METHOD(answerIncomingCall:(NSString *)uuidString)
 
 RCT_EXPORT_METHOD(endCall:(NSString *)uuidString)
 {
-#ifdef DEBUG
-    NSLog(@"[RNCallKeep][endCall] uuidString = %@", uuidString);
-#endif
-    NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
-    CXEndCallAction *endCallAction = [[CXEndCallAction alloc] initWithCallUUID:uuid];
-    CXTransaction *transaction = [[CXTransaction alloc] initWithAction:endCallAction];
-
-    [self requestTransaction:transaction];
+    [self requestEndCall:uuidString];
 }
 
 RCT_EXPORT_METHOD(fulfillEndCall:(NSString *)uuidString)
@@ -735,6 +728,17 @@ RCT_EXPORT_METHOD(getAudioRoutes: (RCTPromiseResolveBlock)resolve
         [currentCalls addObject:requestedCall];
     }
     return currentCalls;
+}
+
+- (void) requestEndCall:(NSString *)uuidString {
+#ifdef DEBUG
+    NSLog(@"[RNCallKeep][endCall] uuidString = %@", uuidString);
+#endif
+    NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+    CXEndCallAction *endCallAction = [[CXEndCallAction alloc] initWithCallUUID:uuid];
+    CXTransaction *transaction = [[CXTransaction alloc] initWithAction:endCallAction];
+
+    [self requestTransaction:transaction];
 }
 
 + (void)endCallWithUUID:(NSString *)uuidString
